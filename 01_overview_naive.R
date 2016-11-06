@@ -32,24 +32,16 @@ library(wordcloud)
 #############################################################
 #LOAD IN DATA - SPLIT TRAIN/TEST - CREATE RANDOM 0/1 LABEL
 #############################################################
-setwd("/Users/robertlange/Desktop/Predicting-Refugee-Flows")
-load_data <- "dump.csv"
+
+setwd("/Users/robertlange/Desktop/news_filter_project/random")
+load_data <- "alerts_6_11_b.csv"
 data <- read.csv(load_data, header=TRUE, , sep=",")
-attach(data)
+data <- as.data.frame(data)
 head(data); dim(data); summary(data)
 
 #############################################################
 
-smp_size <- floor(0.75 * nrow(data))
-set.seed(123)
-train_ind <- sample(seq_len(nrow(data)), size = smp_size)
-
-train <- data[train_ind, ]
-test <- data[-train_ind, ]
-
-#############################################################
-
-date_time <- as.character(date)
+date_time <- as.character(published)
 date <- sapply(strsplit(date_time, split=' ', fixed=TRUE), `[`, 1)
 date <- strptime(date, "%Y-%m-%d")
 time <- sapply(strsplit(date_time, split=' ', fixed=TRUE), `[`, 2)
@@ -59,8 +51,8 @@ time <- chron(times=time)
 #############################################################
 ######################## TEXT MINING ########################
 #############################################################
-title <- as.character(title)
-summary <- as.character(summary)
+data$content.title <- as.character(data$content.title)
+data$content.body <- as.character(data$content.body)
 
 #Treats Title and Summary as n documents
 docs <- Corpus(VectorSource(title))
@@ -69,12 +61,24 @@ docs <- Corpus(VectorSource(title))
 #Rm punctuation, numbers, convert to lower case
 #Rm meaningless words, stemming(cut -ing -es etc.)
 #Save data as plain text
+
+key.word.extract <- function(x, string){
+    ind <- grep(string,x,value = FALSE)
+    x <- gsub(string, "\\1", x)
+    x[-ind] <- ""
+    x
+}
+
+data$label <- as.factor(data$label)
+data$key.word.title <- as.factor(key.word.extract(data$content.title, ".*?<b>(.*?)</b>.*"))
+data$key.word.body <- as.factor(key.word.extract(data$content.body, ".*?<b>(.*?)</b>.*"))
 docs <- tm_map(docs, content_transformer(gsub), pattern = '<b>', replacement = '')
 docs <- tm_map(docs, content_transformer(gsub), pattern = '</b>', replacement = '')
 docs <- tm_map(docs, removePunctuation)
 docs <- tm_map(docs, removeNumbers)
 docs <- tm_map(docs, tolower)
 docs <- tm_map(docs, removeWords, stopwords("english"))
+docs <- tm_map(docs, removeWords, stopwords("spanish"))
 #docs <- tm_map(docs, removeWords, c("department", "email"))
 docs <- tm_map(docs, stemDocument)
 docs <- tm_map(docs, stripWhitespace)
@@ -163,3 +167,23 @@ library(dendextend)
 
 # Get the package:
 label <- cutree(dend1,k=2)
+
+#############################################################
+
+smp_size <- floor(0.75 * nrow(data))
+set.seed(123)
+train_ind <- sample(seq_len(nrow(data)), size = smp_size)
+
+data.train <- data[train_ind, ]
+data.test <- data[-train_ind, ]
+
+
+#######################################################################################
+#NAIVE BAYES CLASSIFIER
+#######################################################################################
+
+X.train <- as.data.frame(cbind(data.train$label, data.train$key.word.title, data.train$key.word.body))
+X.test <- as.data.frame(cbind(data.test$label, data.test$key.word.title, data.test$key.word.body))
+
+logistic <- glm(data.train$label ~ ., data=X.train, family='binomial')
+log_reg_pred <- predict(logistic,X.test)
