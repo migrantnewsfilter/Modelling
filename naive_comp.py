@@ -47,6 +47,10 @@ news_feeds_df['text'] =  news_feeds_df['title'] + " " + news_feeds_df['body']
 ##############################OVERVIEW OF DATA SET##############################
 ################################################################################
 
+#Drop observations that are not labelled
+news_feeds_df = news_feeds_df.dropna()
+news_feeds_df['label']
+
 print  "Size of data set:", len(news_feeds_df)
 news_feeds_df.head(n=10)
 news_feeds_df.groupby('label').describe()
@@ -85,16 +89,6 @@ news_feeds_df.text.head().apply(split_into_lemmas)
 bow_transformer = CountVectorizer(analyzer=split_into_lemmas).fit(news_feeds_df['text'])
 #Each vector has as many dimensions as there are unique words in the text corpus
 print len(bow_transformer.vocabulary_)
-
-#Example bag-of-words counts as a vector using bow_transformer
-feed4 = news_feeds_df['text'][3]
-print feed4
-bow4 = bow_transformer.transform([feed4])
-print bow4
-print bow4.shape
-print bow_transformer.get_feature_names()[64]
-print bow_transformer.get_feature_names()[1893]
-
 news_feeds_df_bow = bow_transformer.transform(news_feeds_df['text'])
 print 'sparse matrix shape:', news_feeds_df_bow.shape #dim: number feeds x unique words
 print 'number of non-zeros:', news_feeds_df_bow.nnz
@@ -106,12 +100,6 @@ print 'sparsity: %.2f%%' % (100.0 * news_feeds_df_bow.nnz / (news_feeds_df_bow.s
 
 #Term weighting and normalization can be done with TF-IDF
 tfidf_transformer = TfidfTransformer().fit(news_feeds_df_bow)
-tfidf4 = tfidf_transformer.transform(bow4)
-print tfidf4
-
-print tfidf_transformer.idf_[bow_transformer.vocabulary_['migrant']]
-print tfidf_transformer.idf_[bow_transformer.vocabulary_['death']]
-
 #transform the entire bag-of-words corpus into TF-IDF corpus at once:
 news_feeds_df_tfidf = tfidf_transformer.transform(news_feeds_df_bow)
 print news_feeds_df_tfidf.shape
@@ -122,9 +110,6 @@ print news_feeds_df_tfidf.shape
 
 #Naive Bayes using scikit-learn
 %time spam_detector = MultinomialNB().fit(news_feeds_df_tfidf, news_feeds_df['label'])
-
-print 'predicted:', spam_detector.predict(tfidf4)[0]
-print 'expected:', news_feeds_df.label[3]
 
 all_predictions = spam_detector.predict(news_feeds_df_tfidf)
 print all_predictions
@@ -138,11 +123,16 @@ plt.title('confusion matrix')
 plt.colorbar()
 plt.ylabel('expected label')
 plt.xlabel('predicted label')
+plt.savefig('Confusion_Matrix.png')
 
 print classification_report(news_feeds_df['label'], all_predictions)
 
+################################################################################
+#############################CV - PIPELINE ANALYSIS ############################
+################################################################################
+
 msg_train, msg_test, label_train, label_test = \
-    train_test_split(news_feeds_df['feed'], news_feeds_df['label'], test_size=0.2)
+    train_test_split(news_feeds_df['text'], news_feeds_df['label'], test_size=0.2)
 
 print len(msg_train), len(msg_test), len(msg_train) + len(msg_test)
 
@@ -163,8 +153,6 @@ print scores
 
 print scores.mean(), scores.std()
 
-def plot_learning_curve(estimator, title, X, y, ylim=None, cv=None,
-                        n_jobs=-1, train_sizes=np.linspace(.1, 1.0, 5)):
     """
     Generate a simple plot of the test and traning learning curve.
 
@@ -195,10 +183,15 @@ def plot_learning_curve(estimator, title, X, y, ylim=None, cv=None,
     n_jobs : integer, optional
         Number of jobs to run in parallel (default 1).
     """
+
+
+def plot_learning_curve(estimator, title, X, y, ylim=None, cv=None,
+                        n_jobs=-1, train_sizes=np.linspace(.1, 1.0, 5)):
     plt.figure()
     plt.title(title)
     if ylim is not None:
         plt.ylim(*ylim)
+
     plt.xlabel("Training examples")
     plt.ylabel("Score")
     train_sizes, train_scores, test_scores = learning_curve(
@@ -210,20 +203,22 @@ def plot_learning_curve(estimator, title, X, y, ylim=None, cv=None,
     plt.grid()
 
     plt.fill_between(train_sizes, train_scores_mean - train_scores_std,
-                     train_scores_mean + train_scores_std, alpha=0.1,
-                     color="r")
+                     train_scores_mean + train_scores_std, alpha=0.1, color="r")
     plt.fill_between(train_sizes, test_scores_mean - test_scores_std,
                      test_scores_mean + test_scores_std, alpha=0.1, color="g")
-    plt.plot(train_sizes, train_scores_mean, 'o-', color="r",
-             label="Training score")
-    plt.plot(train_sizes, test_scores_mean, 'o-', color="g",
-             label="Cross-validation score")
+    plt.plot(train_sizes, train_scores_mean, color="r", label="Training score")
+    plt.plot(train_sizes, test_scores_mean, color="g", label="Cross-validation score")
 
     plt.legend(loc="best")
     return plt
 
 %time plot_learning_curve(pipeline, "accuracy vs. training set size", msg_train, label_train, cv=5)
 
+################################################################################
+#####################PARAMETER TUNING - NAIVE BAYES#############################
+################################################################################
+
+# Does the extra processing cost of lemmatization (vs. just plain words) really help
 params = {
     'tfidf__use_idf': (True, False),
     'bow__analyzer': (split_into_lemmas, split_into_tokens),
@@ -241,15 +236,22 @@ grid = GridSearchCV(
 %time nb_detector = grid.fit(msg_train, label_train)
 print nb_detector.grid_scores_
 
-print nb_detector.predict_proba(["Hi mom, how are you?"])[0]
-print nb_detector.predict_proba(["WINNER! Credit for free!"])[0]
+#Predict on examples of text
+print nb_detector.predict_proba(["Migrants die in tragic event"])[0], nb_detector.predict(["Migrants die in tragic event"])[0]
+print nb_detector.predict_proba(["WINNER! Credit for free!"])[0], nb_detector.predict(["WINNER! Credit for free!"])[0]
 
-print nb_detector.predict(["Hi mom, how are you?"])[0]
-print nb_detector.predict(["WINNER! Credit for free!"])[0]
+print nb_detector.predict_proba(["libyan president mourns fact that migrants die in the mediterranean"])[0], nb_detector.predict(["libyan president mourns fact that migrants die in the mediterranean"])[0]
+print nb_detector.predict_proba(["migrant shot dead while trying to cross border into texas"])[0], nb_detector.predict(["migrant shot dead while trying to cross border into texas"])[0]
 
+
+#overall scores on the test set
 predictions = nb_detector.predict(msg_test)
 print confusion_matrix(label_test, predictions)
 print classification_report(label_test, predictions)
+
+################################################################################
+#####################PARAMETER TUNING - SVM#####################################
+################################################################################
 
 pipeline_svm = Pipeline([
     ('bow', CountVectorizer(analyzer=split_into_lemmas)),
@@ -275,18 +277,32 @@ grid_svm = GridSearchCV(
 %time svm_detector = grid_svm.fit(msg_train, label_train) # find the best combination from param_svm
 print svm_detector.grid_scores_
 
-print svm_detector.predict(["Hi mom, how are you?"])[0]
+print svm_detector.predict(["Migrants die in tragic event"])[0]
 print svm_detector.predict(["WINNER! Credit for free!"])[0]
+
+print svm_detector.predict(["libyan president mourns fact that migrants die in the mediterranean"])[0]
+print svm_detector.predict(["migrant shot dead while trying to cross border into texas"])[0]
 
 print confusion_matrix(label_test, svm_detector.predict(msg_test))
 print classification_report(label_test, svm_detector.predict(msg_test))
 
+################################################################################
+########################OUTFILING  PREDICTORS###################################
+################################################################################
+
 # store the spam detector to disk after training
-with open('sms_spam_detector.pkl', 'wb') as fout:
+with open('svm_news_classifier.pkl', 'wb') as fout:
     cPickle.dump(svm_detector, fout)
+
+with open('nb_news_classifier.pkl', 'wb') as fout:
+    cPickle.dump(nb_detector, fout)
 
 # ...and load it back, whenever needed, possibly on a different machine
 svm_detector_reloaded = cPickle.load(open('sms_spam_detector.pkl'))
+nb_detector_reloaded = cPickle.load(open('nb_spam_detector.pkl'))
 
-print 'before:', svm_detector.predict([feed4])[0]
-print 'after:', svm_detector_reloaded.predict([feed4])[0]
+print 'before:', svm_detector.predict(["Migrants die in tragic event"])[0]
+print 'after:', svm_detector_reloaded.predict(["Migrants die in tragic event")[0]
+
+print 'before:', nb_detector.predict(["Migrants die in tragic event"])[0]
+print 'after:', nb_detector_reloaded.predict(["Migrants die in tragic event")[0]

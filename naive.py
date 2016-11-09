@@ -47,6 +47,10 @@ news_feeds_df['text'] =  news_feeds_df['title'] + " " + news_feeds_df['body']
 ##############################OVERVIEW OF DATA SET##############################
 ################################################################################
 
+#Drop observations that are not labelled
+news_feeds_df = news_feeds_df.dropna()
+news_feeds_df['label']
+
 print  "Size of data set:", len(news_feeds_df)
 news_feeds_df.head(n=10)
 news_feeds_df.groupby('label').describe()
@@ -138,11 +142,12 @@ plt.title('confusion matrix')
 plt.colorbar()
 plt.ylabel('expected label')
 plt.xlabel('predicted label')
+plt.savefig('Confusion_Matrix.png')
 
 print classification_report(news_feeds_df['label'], all_predictions)
 
 msg_train, msg_test, label_train, label_test = \
-    train_test_split(news_feeds_df['feed'], news_feeds_df['label'], test_size=0.2)
+    train_test_split(news_feeds_df['text'], news_feeds_df['label'], test_size=0.2)
 
 print len(msg_train), len(msg_test), len(msg_train) + len(msg_test)
 
