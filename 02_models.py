@@ -1,109 +1,3 @@
-%matplotlib inline
-import os
-import matplotlib.pyplot as plt
-import csv
-from textblob import TextBlob
-import pandas as pd
-import sklearn
-import cPickle
-import json
-import numpy as np
-from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
-from sklearn.naive_bayes import MultinomialNB
-from sklearn.svm import SVC, LinearSVC
-from sklearn.metrics import classification_report, f1_score, accuracy_score, confusion_matrix
-from sklearn.pipeline import Pipeline
-from sklearn.grid_search import GridSearchCV
-from sklearn.cross_validation import StratifiedKFold, cross_val_score, train_test_split
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.learning_curve import learning_curve
-from pymongo import MongoClient, ASCENDING
-from bson.json_util import dumps
-################################################################################
-############################LOADING IN OF DATA SET##############################
-################################################################################
-os.chdir('..')
-client = MongoClient("mongodb://209.177.92.45:80")
-
-collection = client['newsfilter'].alerts
-
-def get_articles():
-    print 'get articles!!!'
-    cursor = collection.find().sort('added', ASCENDING)
-    return dumps(cursor)
-
-news_feeds_json = get_articles()
-parsed = json.loads(news_feeds_json)
-print json.dumps(parsed, indent=4, sort_keys=True)
-
-news_feeds = pd.read_json(news_feeds_json)
-news_feeds_df = pd.DataFrame(news_feeds)
-
-temp = news_feeds_df['content'].apply(pd.Series)
-news_feeds_df = pd.concat([news_feeds_df, temp], axis=1)
-news_feeds_df['text'] =  news_feeds_df['title'] + " " + news_feeds_df['body']
-
-################################################################################
-##############################OVERVIEW OF DATA SET##############################
-################################################################################
-
-#Drop observations that are not labelled
-news_feeds_df = news_feeds_df.dropna()
-news_feeds_df['label']
-
-print  "Size of data set:", len(news_feeds_df)
-news_feeds_df.head(n=10)
-news_feeds_df.groupby('label').describe()
-
-#DEFINE LENGHT OF TITLE + CONTENT BODY
-news_feeds_df['length'] = news_feeds_df['text'].map(lambda text: len(text))
-news_feeds_df.length.plot(bins=20, kind='hist')
-plt.savefig('Histogram_Text_Length.png')
-news_feeds_df.length.describe()
-print list(news_feeds_df.text[news_feeds_df.length > 350])
-news_feeds_df.hist(column='length', by='label', bins=50)
-plt.savefig('Histogram_Text_Length_Label.png')
-
-################################################################################
-#################################DATA PROCESSING################################
-################################################################################
-
-def split_into_tokens(text):
-    #split a message into its individual words
-    #text = unicode(text, 'utf8') - convert bytes into proper unicode - does not work because already unicode
-    return TextBlob(text).words
-news_feeds_df.text.head().apply(split_into_tokens)
-
-def split_into_lemmas(text):
-    #normalize words into their base form (lemmas)
-    text = text.lower()
-    words = TextBlob(text).words
-    # for each word, take its "base form" = lemma
-    return [word.lemma for word in words]
-news_feeds_df.text.head().apply(split_into_lemmas)
-
-################################################################################
-#############################CONVERT TOKENS TO VECTOR###########################
-################################################################################
-
-bow_transformer = CountVectorizer(analyzer=split_into_lemmas).fit(news_feeds_df['text'])
-#Each vector has as many dimensions as there are unique words in the text corpus
-print len(bow_transformer.vocabulary_)
-news_feeds_df_bow = bow_transformer.transform(news_feeds_df['text'])
-print 'sparse matrix shape:', news_feeds_df_bow.shape #dim: number feeds x unique words
-print 'number of non-zeros:', news_feeds_df_bow.nnz
-print 'sparsity: %.2f%%' % (100.0 * news_feeds_df_bow.nnz / (news_feeds_df_bow.shape[0] * news_feeds_df_bow.shape[1]))
-
-################################################################################
-#############################tfidf - transformation#############################
-################################################################################
-
-#Term weighting and normalization can be done with TF-IDF
-tfidf_transformer = TfidfTransformer().fit(news_feeds_df_bow)
-#transform the entire bag-of-words corpus into TF-IDF corpus at once:
-news_feeds_df_tfidf = tfidf_transformer.transform(news_feeds_df_bow)
-print news_feeds_df_tfidf.shape
-
 ################################################################################
 ####################################Modelling###################################
 ################################################################################
@@ -286,23 +180,99 @@ print svm_detector.predict(["migrant shot dead while trying to cross border into
 print confusion_matrix(label_test, svm_detector.predict(msg_test))
 print classification_report(label_test, svm_detector.predict(msg_test))
 
+
+################################################################################
+#####################PARAMETER TUNING - LOGISTIC################################
+################################################################################
+
+msg_train, msg_test, label_train, label_test = \
+    train_test_split(news_feeds_df['text'], news_feeds_df['label'], test_size=0.2)
+
+print len(msg_train), len(msg_test), len(msg_train) + len(msg_test)
+
+pipeline_log = Pipeline([
+    ('bow', CountVectorizer(analyzer=split_into_lemmas)),  # strings to token integer counts
+    ('tfidf', TfidfTransformer()),  # integer counts to weighted TF-IDF scores
+    ('classifier', LogisticRegression()),  # train on TF-IDF vectors w/ Naive Bayes classifier
+])
+
+params = {
+    'tfidf__use_idf': (True, False),
+    'bow__analyzer': (split_into_lemmas, split_into_tokens),
+}
+
+grid_log = GridSearchCV(
+    pipeline_log,  # pipeline from above
+    params,  # parameters to tune via cross validation
+    refit=True,  # fit using all available data at the end, on the best found param combination
+    n_jobs=-1,  # number of cores to use for parallelization; -1 for "all cores"
+    scoring='accuracy',  # what score are we optimizing?
+    cv=StratifiedKFold(label_train, n_folds=5),  # what type of cross validation to use
+)
+
+%time logistic_detector = grid_log.fit(msg_train, label_train)
+print logistic_detector.grid_scores_
+
+
+################################################################################
+#####################PARAMETER TUNING - DECISION TREE###########################
+################################################################################
+
+pipeline_dec_tree = Pipeline([
+    ('bow', CountVectorizer(analyzer=split_into_lemmas)),  # strings to token integer counts
+    ('tfidf', TfidfTransformer()),  # integer counts to weighted TF-IDF scores
+    ('classifier', tree.DecisionTreeClassifier(criterion='gini')),  # train on TF-IDF vectors w/ Naive Bayes classifier
+])
+
+params = {
+    'tfidf__use_idf': (True, False),
+    'bow__analyzer': (split_into_lemmas, split_into_tokens),
+}
+
+grid_dec_tree = GridSearchCV(
+    pipeline_dec_tree,  # pipeline from above
+    params,  # parameters to tune via cross validation
+    refit=True,  # fit using all available data at the end, on the best found param combination
+    n_jobs=-1,  # number of cores to use for parallelization; -1 for "all cores"
+    scoring='accuracy',  # what score are we optimizing?
+    cv=StratifiedKFold(label_train, n_folds=5),  # what type of cross validation to use
+)
+
+%time dec_tree_detector = grid_dec_tree.fit(msg_train, label_train)
+print dec_tree_detector.grid_scores_
+
+
 ################################################################################
 ########################OUTFILING  PREDICTORS###################################
 ################################################################################
 
-# store the spam detector to disk after training
+# store the news classifiers to disk after training
 with open('svm_news_classifier.pkl', 'wb') as fout:
     cPickle.dump(svm_detector, fout)
 
 with open('nb_news_classifier.pkl', 'wb') as fout:
     cPickle.dump(nb_detector, fout)
 
-# ...and load it back, whenever needed, possibly on a different machine
-svm_detector_reloaded = cPickle.load(open('sms_spam_detector.pkl'))
-nb_detector_reloaded = cPickle.load(open('nb_spam_detector.pkl'))
+with open('logistic_news_classifier.pkl', 'wb') as fout:
+    cPickle.dump(logistic_detector, fout)
+
+with open('dec_tree_news_classifier.pkl', 'wb') as fout:
+    cPickle.dump(dec_tree_detector, fout)
+
+# Check whether reloading works!
+svm_detector_reloaded = cPickle.load(open('svm_news_classifier.pkl'))
+nb_detector_reloaded = cPickle.load(open('nb_news_classifier.pkl'))
+logistic_detector_reloaded = cPickle.load(open('logistic_news_classifier.pkl'))
+dec_tree_detector_reloaded = cPickle.load(open('dec_tree_news_classifier.pkl'))
 
 print 'before:', svm_detector.predict(["Migrants die in tragic event"])[0]
 print 'after:', svm_detector_reloaded.predict(["Migrants die in tragic event")[0]
 
 print 'before:', nb_detector.predict(["Migrants die in tragic event"])[0]
 print 'after:', nb_detector_reloaded.predict(["Migrants die in tragic event")[0]
+
+print 'before:', logistic_detector.predict(["Migrants die in tragic event"])[0]
+print 'after:', logistic_detector_reloaded.predict(["Migrants die in tragic event")[0]
+
+print 'before:', dec_tree_detector.predict(["Migrants die in tragic event"])[0]
+print 'after:', dec_tree_detector_reloaded.predict(["Migrants die in tragic event")[0]
