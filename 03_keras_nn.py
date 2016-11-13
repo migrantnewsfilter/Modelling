@@ -1,3 +1,6 @@
+from keras.models import Sequential
+from keras.layers import Dense, Activation, Dropout
+from keras.optimizers import SGD
 ################################################################################
 #######################KERAS NEURAL NETWORK#####################################
 ################################################################################
@@ -50,3 +53,44 @@ loss_and_metrics = model.evaluate(X_test, Y_test, batch_size=32)
 
 classes = model.predict_classes(X_test, batch_size=32)
 proba = model.predict_proba(X_test, batch_size=32)
+
+
+################################################################################
+###############################BABY EXAMPLE#####################################
+################################################################################
+
+
+X_train = np.array([[1,2], [6,5], [8,2]])
+y_train = np.array([2,3,7])
+y_train = y_train.reshape((-1, 1))
+input_dim = X_train.shape[1]
+
+model = Sequential()
+
+model.add(Dense(output_dim=64, input_dim=input_dim))
+model.add(Activation("relu"))
+model.add(Dense(output_dim=10))
+model.add(Activation("softmax"))
+
+model.compile(loss='sparse_categorical_crossentropy', optimizer='sgd', metrics=['accuracy'])
+
+model.fit(X_train, y_train, nb_epoch=5, batch_size=32)
+
+X_train = np.array(news_feeds_df_tfidf)
+y_train = np.array(news_feeds_df['label'])
+y_train = y_train.reshape((-1, 1))
+input_dim = X_train.shape[1]
+
+model = Sequential()
+
+model.add(Dense(output_dim=64, input_dim=input_dim))
+model.add(Activation("relu"))
+model.add(Dense(output_dim=10))
+model.add(Activation("softmax"))
+
+model.compile(loss='sparse_categorical_crossentropy', optimizer='sgd', metrics=['accuracy'])
+
+model.fit(X_train, y_train, nb_epoch=5, batch_size=32)
+
+df = news_feeds_df_tfidf
+numpyMatrix = df.as_matrix()
