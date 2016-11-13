@@ -13,17 +13,14 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import cPickle
+from scipy import sparse, io
 
 ##TEXT MINING PACKAGES
 from textblob import TextBlob
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 
-from nltk.tokenize import RegexpTokenizer
 from stop_words import get_stop_words
 from nltk.stem.porter import PorterStemmer
-import gensim
-from gensim import corpora, models
-from scipy import sparse, io
 
 import sklearn
 from sklearn import tree
