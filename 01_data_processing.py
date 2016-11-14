@@ -23,6 +23,7 @@ from nltk.stem.porter import PorterStemmer
 import gensim
 from gensim import corpora, models
 from scipy import sparse, io
+import HTMLParser
 
 ################################################################################
 ############################LOADING IN OF DATA SET##############################
@@ -48,13 +49,42 @@ news_feeds_json = get_articles()
 news_feeds = pd.read_json(news_feeds_json)
 news_feeds_df = pd.DataFrame(news_feeds)
 
+################################################################################
+############################MERGE SUPPL DATA MMP################################
+################################################################################
+
+MMP_supplementary = pd.DataFrame.from_csv('/Users/robertlange/Desktop/news_filter_project/Modelling/Data/MMP_all_data.csv', sep=',', encoding='utf-8')
+len(MMP_supplementary)
+list(MMP_supplementary.columns.values)
+
+MMP_supplementary['label'] = 'accepted'
+#MMP_supplementary['INFORELIABILITY'] == 'Verified'
+MMP_supplementary['COMMENT'] = MMP_supplementary['COMMENT'].fillna('')
+MMP_supplementary['Cause_of_death'] = MMP_supplementary['Cause_of_death'].fillna('')
+MMP_supplementary['text'] = MMP_supplementary['COMMENT'] + " " + MMP_supplementary['Cause_of_death']
+MMP_supplementary['text'].dropna
+MMP_supplementary = MMP_supplementary[MMP_supplementary['text'] == 'Unknown']
+
+MMP_supplementary = MMP_supplementary[['label', 'text']]
+news_feeds_df = news_feeds_df[['label', 'text']]
+news_feeds_df = news_feeds_df.append(MMP_supplementary, ignore_index=True)
+
+################################################################################
+#############################FEATURE GENERATION#################################
+################################################################################
+
 temp = news_feeds_df['content'].apply(pd.Series)
 news_feeds_df = pd.concat([news_feeds_df, temp], axis=1)
 news_feeds_df['text'] =  news_feeds_df['title'] + " " + news_feeds_df['body']
 
-news_feeds_df['text'] = news_feeds_df['text'].str.replace("<b>", "", n=-1, case=True, flags=0)
-news_feeds_df['text'] = news_feeds_df['text'].str.replace("</b>", "", n=-1, case=True, flags=0)
-news_feeds_df['text'] = news_feeds_df['text'].str.replace("&#39", "", n=-1, case=True, flags=0)
+html_parser = HTMLParser.HTMLParser()
+news_feeds_df['text'] = html_parser.unescape(news_feeds_df['text'])
+
+#news_feeds_df['text'] = news_feeds_df['text'].str.replace("<b>", "", n=-1, case=True, flags=0)
+#news_feeds_df['text'] = news_feeds_df['text'].str.replace("</b>", "", n=-1, case=True, flags=0)
+#news_feeds_df['text'] = news_feeds_df['text'].str.replace("&#39", "", n=-1, case=True, flags=0)
+#news_feeds_df['text'] = news_feeds_df['text'].str.replace("/x", "", n=-1, case=True, flags=0)
+
 
 ################################################################################
 ##############################OVERVIEW OF DATA SET##############################
