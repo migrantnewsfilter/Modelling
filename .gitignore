@@ -4,6 +4,8 @@
 NOTES.py
 03_keras_nn.py
 
+*.pyc
+
 # Compiled source #
 ###################
 *.com

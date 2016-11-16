@@ -13,8 +13,9 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import cPickle
+from text_processing import *
 
-execfile("text_processing.py")
+
 
 news_feeds_df = pd.DataFrame.from_csv('Data/data_df_' + time.strftime("%Y_%m_%d") +".csv", sep='\t', encoding='utf-8')
 list(news_feeds_df.columns.values)

@@ -1,3 +1,7 @@
+from stop_words import get_stop_words
+from nltk.stem.porter import PorterStemmer
+from textblob import TextBlob
+
 def split_into_tokens(text):
     #split a message into its individual words
     #text = unicode(text, 'utf8') - convert bytes into proper unicode - does not work because already unicode
