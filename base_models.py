@@ -1,8 +1,6 @@
 from text_processing import *
 from data_processing import *
 
-from pymongo import MongoClient, ASCENDING
-
 ##GENERAL PACKAGES
 import time
 import pandas as pd

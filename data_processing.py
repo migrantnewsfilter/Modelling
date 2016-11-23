@@ -9,7 +9,7 @@ from pymongo import MongoClient, ASCENDING
 import time
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import cPickle
 
 ##TEXT MINING PACKAGES
@@ -159,7 +159,7 @@ def tfidf_trafo(data,trafo):
         print 'sparse matrix shape - TF-IDF representation (ngram):', news_feeds_df_tfidf.shape
         return news_feeds_df_tfidf
 
-#tfidf_trafo(merge_mmp('/Users/robertlange/Desktop/news_filter_project/Modelling/Data/MMP_all_data.csv'), 1)
+#tfidf_trafo(merge_mmp('./Data/MMP_all_data.csv'), 1)
 
 ######################################################
 #######################Outfiling######################
