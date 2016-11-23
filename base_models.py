@@ -1,11 +1,10 @@
-from text_processing import *
-from data_processing import *
+from data_processing import merge_mmp
+from modelling.models import create_model
 
 ##GENERAL PACKAGES
 import time
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 import cPickle
 
 import sklearn
@@ -26,38 +25,12 @@ from sklearn.ensemble import GradientBoostingClassifier
 ###################FIT/PARAMETER TUNING - NAIVE BAYES###########################
 ################################################################################
 
+
 def estimation(model, name, path):
     news_feeds_df = merge_mmp(path)
-    ##
     msg_train, msg_test, label_train, label_test = \
         train_test_split(news_feeds_df['text'], news_feeds_df['label'], test_size=0.2)
-    ##
-    print len(msg_train), len(msg_test), len(msg_train) + len(msg_test)
-    pipeline = Pipeline([
-        ('bow', CountVectorizer(ngram_range=(1, 3), token_pattern=r'\b\w+\b', min_df=1)),
-        ('tfidf', TfidfTransformer()),
-        ('classifier', model),
-    ])
-    # Does the extra processing cost of lemmatization (vs. just plain words) really help
-    if model == 'SVC':
-        param_svm = [
-          {'classifier__C': [1, 10, 100, 1000], 'classifier__kernel': ['linear']},
-          {'classifier__C': [1, 10, 100, 1000], 'classifier__gamma': [0.001, 0.0001], 'classifier__kernel': ['rbf']},
-        ]
-    else:
-        params = {
-            'tfidf__use_idf': (True, False),
-            'bow__analyzer': (split_into_lemmas, split_into_tokens, remove_stop_words),
-        }
-    grid = GridSearchCV(
-        pipeline,  # pipeline from above
-        params,  # parameters to tune via cross validation
-        refit=True,  # fit using all available data at the end, on the best found param combination
-        n_jobs=-1,  # number of cores to use for parallelization; -1 for "all cores"
-        scoring='accuracy',  # what score are we optimizing?
-        cv=StratifiedKFold(label_train, n_folds=5),  # what type of cross validation to use
-    )
-    model_det = grid.fit(msg_train, label_train)
+    model_det = create_model(model, name, msg_train, label_train)
     print model_det.grid_scores_
     print confusion_matrix(label_test, model_det.predict(msg_test))
     print classification_report(label_test, model_det.predict(msg_test))
@@ -65,10 +38,15 @@ def estimation(model, name, path):
         cPickle.dump(model_det, fout)
     return model_det
 
-path = './Data/MMP_all_data.csv'
+def make_cluster():
+    path = './Data/MMP_all_data.csv'
+    news_feeds_df = merge_mmp(path)['text']
 
-estimation(MultinomialNB(), 'NaiveBayes', path)
-estimation(SVC(), 'SVM', path)
-estimation(LogisticRegression(), 'LogReg', path)
-estimation(tree.DecisionTreeClassifier(criterion='gini'), 'DecisionTree', path)
-estimation(RandomForestClassifier(), 'RandomForest', path)
+
+def write_models_to_disk():
+    path = './Data/MMP_all_data.csv'
+    estimation(MultinomialNB(), 'NaiveBayes', path)
+    estimation(SVC(), 'SVM', path)
+    estimation(LogisticRegression(), 'LogReg', path)
+    estimation(tree.DecisionTreeClassifier(criterion='gini'), 'DecisionTree', path)
+    estimation(RandomForestClassifier(), 'RandomForest', path)
