@@ -7,14 +7,10 @@ import cPickle
 
 from sklearn.metrics import classification_report, f1_score, accuracy_score, confusion_matrix
 
-from base_models import *
+from base_models import estimation, write_models_to_disk
 ##LOAD PREDICTORS
 
-estimation(MultinomialNB(), 'NaiveBayes', path)
-estimation(SVC(), 'SVM', path)
-estimation(LogisticRegression(), 'LogReg', path)
-estimation(tree.DecisionTreeClassifier(criterion='gini'), 'DecisionTree', path)
-estimation(RandomForestClassifier(), 'RandomForest', path)
+write_models_to_disk()
 
 pred_models = {
     'SVM': cPickle.load(open('./serialized_classifiers/SVM.pkl')),
@@ -40,7 +36,7 @@ def test_pred_mat_plot(predictor, name):
     plt.colorbar()
     plt.ylabel('expected label')
     plt.xlabel('predicted label')
-    plt.savefig('/Users/robertlange/Desktop/news_filter_project/Modelling/Graphical_Analysis/Confusion_' + name + '.png')
+    plt.savefig('./Graphical_Analysis/Confusion_' + name + '.png')
 
 for name, predictor in pred_models.iteritems():
     test_pred_mat_plot(predictor, name)

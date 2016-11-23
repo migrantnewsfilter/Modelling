@@ -9,14 +9,13 @@ from pymongo import MongoClient, ASCENDING
 import time
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 import cPickle
 
 ##TEXT MINING PACKAGES
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 #from scipy import sparse, io
 #import HTMLParser
-from text_processing import *
+from modelling.text_processing import *
 
 path = './Data/MMP_all_data.csv'
 
