@@ -56,7 +56,6 @@ def feature_gen():
     return news_feeds_df
 
 #data_feat = feature_gen()
-
 ################################################################################
 ############################MERGE SUPPL DATA MMP################################
 ################################################################################
@@ -82,7 +81,6 @@ def merge_mmp(path):
 
 #path = '/Users/robertlange/Desktop/news_filter_project/Modelling/Data/MMP_all_data.csv'
 #news_feeds_df = merge_mmp(path)
-
 ################################################################################
 ##############################OVERVIEW OF DATA SET##############################
 ################################################################################
@@ -96,7 +94,6 @@ def overview(data):
     plt.savefig('Graphical_Analysis/Histogram_Text_Length_Label.png')
 
 #overview(merge_mmp(path))
-
 ################################################################################
 #################################TEXT PROCESSING################################
 ################################################################################
@@ -125,7 +122,7 @@ def clean_text(data):
 def vector_trafo(data, trafo):
     news_feeds_df = data
     if trafo == 1:
-        bow_transformer = CountVectorizer(analyzer=split_into_lemmas).fit(news_feeds_df['text'])
+        bow_transformer = CountVectorizer(analyzer=split_into_lemmas, stop_words='english').fit(news_feeds_df['text'])
         BOW = bow_transformer.transform(news_feeds_df['text'])
         print 'sparse matrix shape - BOW representation:', BOW.shape #dim: number feeds x unique words
         return BOW
@@ -143,7 +140,6 @@ def vector_trafo(data, trafo):
 #print len(bow_transformer.vocabulary_)
 #print 'number of non-zeros:', news_feeds_df_bow.nnz
 #print 'sparsity: %.2f%%' % (100.0 * news_feeds_df_bow.nnz / (news_feeds_df_bow.shape[0] * news_feeds_df_bow.shape[1]))
-
 ######################################################
 ################tfidf - transformation################
 ######################################################
