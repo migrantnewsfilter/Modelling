@@ -15,6 +15,7 @@ import re
 import os
 import codecs
 from sklearn import feature_extraction
+from sklearn.cluster import DBSCAN
 import datetime
 #import mpld3
 
@@ -38,6 +39,8 @@ s = pd.Series(data['published'])
 s.reset_index()
 
 pd.to_datetime(s)
+
+
 
 tfidf_matrix = tfidf_trafo(data,3)
 
@@ -103,3 +106,33 @@ clusters
 clusters.shape
 
 #criterion='maxclust'
+
+#####################################################
+# DBSCAN #
+#####################################################
+
+def dbscan(data,epsilon,trafo,tfidf):
+    if tfidf=='tfidf':
+        matrix = tfidf_trafo(data,trafo)
+        db = DBSCAN(eps=epsilon,min_samples=4).fit_predict(matrix)
+    else:
+        matrix = vector_trafo(data,trafo)
+        db = DBSCAN(eps=epsilon,min_samples=4).fit_predict(matrix)
+    return db
+
+data.published[u'$date']
+
+db = dbscan(data,1.36,3,'tfidf')
+
+# Number of clusters in labels, ignoring noise if present.
+n_clusters_ = len(set(db)) - (1 if -1 in set(db) else 0)
+n_clusters_
+
+for i in set(db):
+    print i
+    print len(data.text[ db == i ])
+    print data.text[db == i]
+    print ' ' 
+
+
+
