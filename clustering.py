@@ -1,138 +1,59 @@
 #!/usr/bin/env python
-from text_processing import *
-from data_processing import *
 
-##GENERAL PACKAGES
-import time
+from pymongo import MongoClient
 import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import cPickle
-
-import nltk
 from bs4 import BeautifulSoup
-import re
-import os
-import codecs
-from sklearn import feature_extraction
+from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.cluster import DBSCAN
-import datetime
-#import mpld3
 
-from sklearn.metrics.pairwise import cosine_similarity
-from scipy.cluster.hierarchy import ward, dendrogram, linkage
+def get_articles_by_source(src = '', label = ''):
+    client = MongoClient()
+    collection = client['newsfilter'].news #news - is new one
+    cursor = collection.find({ '_id': {'$regex': src }, 'label': {'$regex': label}})
+    return list(cursor)
 
-from scipy.cluster.hierarchy import cophenet
-from scipy.spatial.distance import pdist
+def create_df(li):
+    original = pd.DataFrame(li)
+    return (pd
+     .concat([original, pd.DataFrame(original['content'].tolist())], 1)
+     .drop('content', 1)
+    )
 
-###################################################################
+def get_all_articles():
+    real = get_articles_by_source('ge')
+    fake = get_articles_by_source('fa')
+    return create_df(real + fake)
 
-#path = './Data/MMP_all_data.csv'
+def get_all_tweets():
+    tweets = get_articles_by_source('tw')
+    return create_df(tweets)
 
-data = feature_gen()
-list(data.columns.values)
+def dbscan(data, epsilon = 3, samples = 2):
+    """ test our dbscan
 
-pd.to_datetime(data['published'])
-data['published']
+    - run mongo locally (newsfilter-api: 'docker-compose up')
+    - seed database if not seeded
 
-s = pd.Series(data['published'])
-s.reset_index()
+    articles = get_all_articles()
+    dbscan(articles.body, 2)
+    """
 
-pd.to_datetime(s)
+    cleaned = data.values.astype('U')
 
+    c = CountVectorizer(
+        stop_words = 'english',
+        ngram_range = (2,3)
+    ).fit_transform(cleaned)
 
+    db = DBSCAN(
+        eps = epsilon,
+        min_samples = samples
+    ).fit_predict(c)
 
-tfidf_matrix = tfidf_trafo(data,3)
+    for i in set(db):
+        print i
+        print len(data[ db == i ])
+        print data[db == i]
+        print ' '
 
-###################################################################
-dist = 1 - cosine_similarity(tfidf_matrix)
-
-#Ward Variance Minimization Algorithm
-#Other metrics: 'single', 'complete', 'average'
-#Use Ward method to compute distance between newly formed clusters
-linkage_matrix = ward(dist) #define the linkage_matrix using ward clustering pre-computed distances
-
-
-fig, ax = plt.subplots(figsize=(15, 20)) # set size
-ax = dendrogram(linkage_matrix, orientation="right"); #, labels=titles
-
-plt.tick_params(\
-    axis= 'x',          # changes apply to the x-axis
-    which='both',      # both major and minor ticks are affected
-    bottom='off',      # ticks along the bottom edge are off
-    top='off',         # ticks along the top edge are off
-    labelbottom='off')
-
-plt.title('Hierarchical Clustering Dendrogram')
-plt.xlabel('sample index')
-plt.ylabel('distance')
-
-plt.tight_layout() #show plot with tight layout
-
-#uncomment below to save figure
-plt.savefig('./Graphical_Analysis/ward_clusters.png', dpi=200) #save figure as ward_clusters
-plt.close()
-'''
-
-plt.title('Hierarchical Clustering Dendrogram (truncated)')
-plt.xlabel('sample index')
-plt.ylabel('distance')
-dendrogram(
-    linkage_matrix,
-    truncate_mode='lastp',  # show only the last p merged clusters
-    p=12,  # show only the last p merged clusters
-    show_leaf_counts=False,  # otherwise numbers in brackets are counts
-    leaf_rotation=90.,
-    leaf_font_size=12.,
-    show_contracted=True,  # to get a distribution impression in truncated branches
-)
-plt.show()
-
-
-#Cophenetic Correlation Coefficient of clustering
-#Compares (correlates) the actual pairwise distances of all your samples to
-#those implied by the hierarchical clustering
-
-#c, coph_dists = cophenet(tfidf_matrix , pdist(tfidf_matrix))
-#c
-
-##Coming up with the right number of clusters!
-'''
-#Set numbers of wanted cluseters by max_d
-from scipy.cluster.hierarchy import fcluster
-max_d = 10
-clusters = fcluster(linkage_matrix, max_d, criterion='maxclust')
-clusters
-clusters.shape
-
-#criterion='maxclust'
-
-#####################################################
-# DBSCAN #
-#####################################################
-
-def dbscan(data,epsilon,trafo,tfidf):
-    if tfidf=='tfidf':
-        matrix = tfidf_trafo(data,trafo)
-        db = DBSCAN(eps=epsilon,min_samples=4).fit_predict(matrix)
-    else:
-        matrix = vector_trafo(data,trafo)
-        db = DBSCAN(eps=epsilon,min_samples=4).fit_predict(matrix)
     return db
-
-data.published[u'$date']
-
-db = dbscan(data,1.36,3,'tfidf')
-
-# Number of clusters in labels, ignoring noise if present.
-n_clusters_ = len(set(db)) - (1 if -1 in set(db) else 0)
-n_clusters_
-
-for i in set(db):
-    print i
-    print len(data.text[ db == i ])
-    print data.text[db == i]
-    print ' ' 
-
-
-
