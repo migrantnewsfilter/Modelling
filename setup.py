@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name="modelling",
-    version='0.0.4',
+    version='0.0.5',
     url="https://github.com/migrantnewsfilter/Modelling",
 
     py_modules=['modelling'],
@@ -14,6 +14,7 @@ setup(
         'pymongo',
         'numpy',
         'sklearn',
-        'scipy'
+        'scipy',
+        'BeautifulSoup4'
     ]
 )
