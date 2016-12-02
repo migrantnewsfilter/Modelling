@@ -31,9 +31,9 @@ def fit_naive_bayes(data, target, priors):
     """ Shows cross validated score from a NB model with given priors """
     return cross_val_score(MultinomialNB(class_prior=priors), data, target, cv = 50)
 
-def add_predictions(model, df):
+def add_predictions(model, v):
     """ Creates a dataframe with predictions from model as 'predicts' """
-    predictions = cross_val_predict(model, df.body.values.astype('U'), df.label, cv=100)
+    predictions = cross_val_predict(model, v, df.label, cv=100)
     predicts = pd.DataFrame(predictions, columns = ['predicts'])
     combined = pd.concat([df, predicts], 1)
     problems = combined.loc[combined['label'] != combined['predicts']][['body', 'label', 'predicts']]
