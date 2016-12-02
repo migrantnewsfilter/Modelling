@@ -27,13 +27,17 @@ def vectorizer(df):
         preprocessor = clean_html
     ).fit(df.body.values.astype('U'))
 
-def fit_naive_bayes(data, target, priors):
-    """ Shows cross validated score from a NB model with given priors """
-    return cross_val_score(MultinomialNB(class_prior=priors), data, target, cv = 50)
+def create_tfidf(v, df):
+    return v.transform(df.body.values.astype('U'))
 
-def add_predictions(model, v):
+def fit_naive_bayes(tfidf, target, priors):
+    """ Shows cross validated score from a NB model with given priors """
+    return cross_val_score(MultinomialNB(class_prior=priors), tfidf, target, cv = 50)
+
+def add_predictions(model, df):
     """ Creates a dataframe with predictions from model as 'predicts' """
-    predictions = cross_val_predict(model, v, df.label, cv=100)
+    c = create_tfidf(vectorizer(df), df)
+    predictions = cross_val_predict(model, c, df.label, cv=100)
     predicts = pd.DataFrame(predictions, columns = ['predicts'])
     combined = pd.concat([df, predicts], 1)
     problems = combined.loc[combined['label'] != combined['predicts']][['body', 'label', 'predicts']]
@@ -60,7 +64,10 @@ def get_top_features(v, model, accepted = True, start = 1, end = 10):
 
 def clean_html(s):
     """ Converts all HTML elements to Unicode """
-    return BeautifulSoup(s, 'html5lib').get_text()
+    try:
+        return BeautifulSoup(s, 'html5lib').get_text()
+    except:
+        return ''
 
 def create_model(data, target, priors = [0.3, 0.7]):
     """ Creates a model/pipeline for production use.
