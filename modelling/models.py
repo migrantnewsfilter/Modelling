@@ -1,55 +1,82 @@
-from modelling.text_processing import split_into_lemmas, split_into_tokens, remove_stop_words
-from pymongo import MongoClient, ASCENDING
-
-##GENERAL PACKAGES
-import time
+from pymongo import MongoClient
 import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import cPickle
-
-import sklearn
-from sklearn import tree
-from sklearn.naive_bayes import MultinomialNB
-from sklearn.svm import SVC, LinearSVC
-from sklearn.metrics import classification_report, f1_score, accuracy_score, confusion_matrix
+from bs4 import BeautifulSoup
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
+from sklearn.cluster import DBSCAN
+from sklearn.model_selection import cross_val_score, cross_val_predict, GridSearchCV
+from sklearn.naive_bayes import MultinomialNB, BernoulliNB
 from sklearn.pipeline import Pipeline
-from sklearn.grid_search import GridSearchCV
-from sklearn.cross_validation import StratifiedKFold, cross_val_score, train_test_split
-from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.learning_curve import learning_curve
-from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.ensemble import GradientBoostingClassifier
 
-def create_model(model, name, msg_train, label_train):
+def get_labelled_articles(client):
+    collection = client['newsfilter'].news
+    cursor = collection.find({ 'label': {'$exists': True}})
+    return list(cursor)
 
-    pipeline = Pipeline([
-        ('bow', CountVectorizer(ngram_range=(1, 3), token_pattern=r'\b\w+\b', min_df=1)),
-        ('tfidf', TfidfTransformer()),
-        ('classifier', model),
-    ])
-
-    # Does the extra processing cost of lemmatization (vs. just plain words) really help
-    if model == 'SVC':
-        param_svm = [
-          {'classifier__C': [1, 10, 100, 1000], 'classifier__kernel': ['linear']},
-          {'classifier__C': [1, 10, 100, 1000], 'classifier__gamma': [0.001, 0.0001], 'classifier__kernel': ['rbf']},
-        ]
-    else:
-        params = {
-            'tfidf__use_idf': (True, False),
-            'bow__analyzer': (split_into_lemmas, split_into_tokens, remove_stop_words),
-        }
-
-    grid = GridSearchCV(
-        pipeline,  # pipeline from above
-        params,  # parameters to tune via cross validation
-        refit=True,  # fit using all available data at the end, on the best found param combination
-        n_jobs=-1,  # number of cores to use for parallelization; -1 for "all cores"
-        scoring='accuracy',  # what score are we optimizing?
-        cv=StratifiedKFold(label_train, n_folds=5),  # what type of cross validation to use
+def create_df(li):
+    original = pd.DataFrame(li)
+    return (pd
+     .concat([original, pd.DataFrame(original['content'].tolist())], 1)
+     .drop('content', 1)
     )
 
-    return grid.fit(msg_train, label_train)
+def vectorizer(df):
+    """ Creates a tfidf vectorizer on df.body values """
+    return TfidfVectorizer(
+        stop_words = 'english',
+        ngram_range = (2,4),
+        preprocessor = clean_html
+    ).fit(df.body.values.astype('U'))
+
+def fit_naive_bayes(data, target, priors):
+    """ Shows cross validated score from a NB model with given priors """
+    return cross_val_score(MultinomialNB(class_prior=priors), data, target, cv = 50)
+
+def add_predictions(model, df):
+    """ Creates a dataframe with predictions from model as 'predicts' """
+    predictions = cross_val_predict(model, df.body.values.astype('U'), df.label, cv=100)
+    predicts = pd.DataFrame(predictions, columns = ['predicts'])
+    combined = pd.concat([df, predicts], 1)
+    problems = combined.loc[combined['label'] != combined['predicts']][['body', 'label', 'predicts']]
+    return problems
+
+def create_test_model(v, df, priors = [0.3,0.7]):
+    """ Creates a NB Model & fits it via body and label """
+    model = MultinomialNB(class_prior = priors)
+    model.fit(v.transform(map(clean_html, df.body.values.astype('U'))), df.label)
+    return model
+
+
+def get_top_features(v, model, accepted = True, start = 1, end = 10):
+    """ Get the most probable n-grams for a given class.
+
+    >>> v = vectorizer(df.body)
+    >>> model = create_test_model(v, df)
+    >>> get_top_features(v, model)
+    """
+    i = 0 if accepted else 1
+    probs = zip(v.get_feature_names(), model.feature_log_prob_[i])
+    return sorted(probs, key = lambda x: -x[1])[start:end]
+
+
+def clean_html(s):
+    """ Converts all HTML elements to Unicode """
+    return BeautifulSoup(s, 'html5lib').get_text()
+
+def create_model(data, target, priors = [0.3, 0.7]):
+    """ Creates a model/pipeline for production use.
+
+    Returns predict_proba method to be used on an iterable
+    of strings!
+
+    data : Iterable of text to be classified
+    target: Iterable of target classes (two)
+    priors: List (length 2) of prior probabilities of classes
+    """
+    pipeline = Pipeline([
+        ('tfidf',  TfidfVectorizer(stop_words = 'english',
+                                   ngram_range = (2,4),
+                                   preprocessor = clean_html)),
+        ('classifier', MultinomialNB(class_prior=priors))
+    ])
+
+    return pipeline.fit(data, target)

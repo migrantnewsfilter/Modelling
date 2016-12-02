@@ -5,6 +5,7 @@ NOTES.py
 03_keras_nn.py
 Serialized_Classifiers/*
 Graphical_Analysis/*
+*.cache
 
 *.pyc
 

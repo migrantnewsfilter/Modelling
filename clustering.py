@@ -8,7 +8,7 @@ from sklearn.cluster import DBSCAN
 
 def get_articles_by_source(src = '', label = ''):
     client = MongoClient()
-    collection = client['newsfilter'].news #news - is new one
+    collection = client['newsfilter'].news
     cursor = collection.find({ '_id': {'$regex': src }, 'label': {'$regex': label}})
     return list(cursor)
 
