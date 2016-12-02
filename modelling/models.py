@@ -65,7 +65,7 @@ def get_top_features(v, model, accepted = True, start = 1, end = 10):
 def clean_html(s):
     """ Converts all HTML elements to Unicode """
     try:
-        return BeautifulSoup(s, 'html5lib').get_text()
+        return BeautifulSoup(s, 'html5lib').get_text() if s else ''
     except Exception as e:
         print e
         return ''
