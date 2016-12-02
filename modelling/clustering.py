@@ -3,9 +3,9 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.cluster import DBSCAN
 from models import clean_html
 
-def get_articles_by_source(client, src = '', label = ''):
-    collection = client['newsfilter'].news #news - is new one
-    cursor = collection.find({ '_id': {'$regex': src }, 'label': {'$regex': label}})
+def get_articles_by_source(client, src = ''):
+    collection = client['newsfilter'].news
+    cursor = collection.find({ '_id': {'$regex': src }, 'label': {'$exists': None}})
     return list(cursor)
 
 def get_all_articles(client):
