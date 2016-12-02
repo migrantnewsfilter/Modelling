@@ -66,7 +66,8 @@ def clean_html(s):
     """ Converts all HTML elements to Unicode """
     try:
         return BeautifulSoup(s, 'html5lib').get_text()
-    except:
+    except Exception as e:
+        print e
         return ''
 
 def create_model(data, target, priors = [0.3, 0.7]):
