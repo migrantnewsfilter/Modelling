@@ -3,9 +3,10 @@ import pandas as pd
 from bs4 import BeautifulSoup
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.cluster import DBSCAN
-from sklearn.model_selection import cross_val_score, cross_val_predict, GridSearchCV
+from sklearn.model_selection import cross_val_score, cross_val_predict, GridSearchCV, LeaveOneGroupOut
 from sklearn.naive_bayes import MultinomialNB, BernoulliNB
 from sklearn.pipeline import Pipeline
+from re import sub
 
 def get_labelled_articles(client):
     collection = client['newsfilter'].news
@@ -65,7 +66,11 @@ def get_top_features(v, model, accepted = True, start = 1, end = 10):
 def clean_html(s):
     """ Converts all HTML elements to Unicode """
     try:
+        s = sub(r'https?://[^\s]+', '', s)
+        s = sub(r'@\w+', '', s)
         return BeautifulSoup(s, 'html5lib').get_text() if s else ''
+    except UserWarning:
+        return ''
     except Exception as e:
         print e
         return ''
