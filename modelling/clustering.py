@@ -6,15 +6,6 @@ from models import clean_html
 import pandas as pd
 import numpy as np
 
-def get_all_articles(collection):
-    real = get_articles_by_source(collection, 'ge')
-    fake = get_articles_by_source(collection, 'fa')
-    return real + fake
-
-def get_all_tweets(collection):
-    tweets = get_articles_by_source(collection, 'tw')
-    return tweets
-
 def dbscan(data, epsilon, n = 2):
     vector = CountVectorizer(
         stop_words='english',

@@ -26,20 +26,20 @@ def test_handle_removal():
 
 
 #########################################################
-# get_article
+# get_articles
 #########################################################
 
-def test_get_article_with_regex():
+def test_get_articles_with_regex():
     collection = MongoClient().db.collection
     collection.insert_many([{ '_id': 'tw:abc', 'foo': 'bar'}, {'_id': 'ge:dbc', 'foo': 'bar'}])
-    assert len(get_article(collection, src = 'tw')) == 1
-    assert len(get_article(collection, src = 'ge')) == 1
-    assert len(get_article(collection)) == 2
+    assert len(get_articles(collection, src = 'tw')) == 1
+    assert len(get_articles(collection, src = 'ge')) == 1
+    assert len(get_articles(collection)) == 2
 
 
-def test_get_article_with_label():
+def test_get_articles_with_label():
     collection = MongoClient().db.collection
     collection.insert_many([{ '_id': 'tw:abc', 'label': 'shite'}, {'_id': 'ge:dbc'}, {'_id': 'ge:boo'}])
-    assert len(get_article(collection, False)) == 2
-    assert len(get_article(collection, True)) == 1
-    assert len(get_article(collection)) == 3
+    assert len(get_articles(collection, False)) == 2
+    assert len(get_articles(collection, True)) == 1
+    assert len(get_articles(collection)) == 3

@@ -1,7 +1,7 @@
 from bs4 import BeautifulSoup
 from re import sub
 
-def get_article(collection, label = None, src = ''):
+def get_articles(collection, label = None, src = ''):
     pattern = { '_id': {'$regex': src }}
     if label != None:
         pattern['label'] = {'$exists': label}
