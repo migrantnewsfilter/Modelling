@@ -6,18 +6,13 @@ from models import clean_html
 import pandas as pd
 import numpy as np
 
-def get_articles_by_source(client, src = ''):
-    collection = client['newsfilter'].news
-    cursor = collection.find({ '_id': {'$regex': src }, 'label': {'$exists': None}})
-    return list(cursor)
-
-def get_all_articles(client):
-    real = get_articles_by_source(client, 'ge')
-    fake = get_articles_by_source(client, 'fa')
+def get_all_articles(collection):
+    real = get_articles_by_source(collection, 'ge')
+    fake = get_articles_by_source(collection, 'fa')
     return real + fake
 
-def get_all_tweets(client):
-    tweets = get_articles_by_source(client, 'tw')
+def get_all_tweets(collection):
+    tweets = get_articles_by_source(collection, 'tw')
     return tweets
 
 def dbscan(data, epsilon, n = 2):
@@ -32,8 +27,9 @@ def dbscan(data, epsilon, n = 2):
     return fit
 
 def get_cluster_table(epsilon):
-    client = MongoClient()
-    tweets = get_all_tweets(client)
+    """ Used for optimizing and testing interactively """
+    collection = MongoClient()['newsfilter'].news
+    tweets = get_all_articles(collection)
     bodies = map(lambda x: x['content'].get('body'), tweets)
     fit = dbscan(bodies, epsilon)
     zipped = zip(fit, bodies)

@@ -1,17 +1,10 @@
-from pymongo import MongoClient
 import pandas as pd
-from bs4 import BeautifulSoup
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.cluster import DBSCAN
 from sklearn.model_selection import cross_val_score, cross_val_predict, GridSearchCV, LeaveOneGroupOut
 from sklearn.naive_bayes import MultinomialNB, BernoulliNB
 from sklearn.pipeline import Pipeline
-from re import sub
-
-def get_labelled_articles(client):
-    collection = client['newsfilter'].news
-    cursor = collection.find({ 'label': {'$exists': True}})
-    return list(cursor)
+from utils import clean_html
 
 def create_df(li):
     original = pd.DataFrame(li)
@@ -33,6 +26,7 @@ def create_tfidf(v, df):
 
 def fit_naive_bayes(tfidf, target, priors):
     """ Shows cross validated score from a NB model with given priors """
+    logo = LeaveOneGroupOut()
     return cross_val_score(MultinomialNB(class_prior=priors), tfidf, target, cv = 50)
 
 def add_predictions(model, df):
@@ -50,7 +44,6 @@ def create_test_model(v, df, priors = [0.3,0.7]):
     model.fit(v.transform(map(clean_html, df.body.values.astype('U'))), df.label)
     return model
 
-
 def get_top_features(v, model, accepted = True, start = 1, end = 10):
     """ Get the most probable n-grams for a given class.
 
@@ -61,19 +54,6 @@ def get_top_features(v, model, accepted = True, start = 1, end = 10):
     i = 0 if accepted else 1
     probs = zip(v.get_feature_names(), model.feature_log_prob_[i])
     return sorted(probs, key = lambda x: -x[1])[start:end]
-
-
-def clean_html(s):
-    """ Converts all HTML elements to Unicode """
-    try:
-        s = sub(r'https?://[^\s]+', '', s)
-        s = sub(r'@\w+', '', s)
-        return BeautifulSoup(s, 'html5lib').get_text() if s else ''
-    except UserWarning:
-        return ''
-    except Exception as e:
-        print e
-        return ''
 
 def create_model(data, target, priors = [0.3, 0.7]):
     """ Creates a model/pipeline for production use.
