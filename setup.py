@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name="modelling",
-    version='0.0.9',
+    version='0.0.10',
     url="https://github.com/migrantnewsfilter/Modelling",
 
     py_modules=['modelling'],
