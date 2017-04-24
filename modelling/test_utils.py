@@ -1,6 +1,6 @@
-from utils import clean_html, get_article
+from utils import clean_html, get_articles
 from mongomock import MongoClient
-
+from datetime import datetime
 #########################################################
 # clean_html
 #########################################################
@@ -31,7 +31,7 @@ def test_handle_removal():
 
 def test_get_articles_with_regex():
     collection = MongoClient().db.collection
-    collection.insert_many([{ '_id': 'tw:abc', 'foo': 'bar'}, {'_id': 'ge:dbc', 'foo': 'bar'}])
+    collection.insert_many([{ '_id': 'tw:abc', 'added': datetime.utcnow(), 'foo': 'bar'}, {'_id': 'ge:dbc', 'added': datetime.utcnow(), 'foo': 'bar'}])
     assert len(get_articles(collection, src = 'tw')) == 1
     assert len(get_articles(collection, src = 'ge')) == 1
     assert len(get_articles(collection)) == 2
@@ -39,7 +39,17 @@ def test_get_articles_with_regex():
 
 def test_get_articles_with_label():
     collection = MongoClient().db.collection
-    collection.insert_many([{ '_id': 'tw:abc', 'label': 'shite'}, {'_id': 'ge:dbc'}, {'_id': 'ge:boo'}])
+    collection.insert_many([{ '_id': 'tw:abc', 'label': 'shite', 'added': datetime.utcnow()}, {'_id': 'ge:dbc', 'added': datetime.utcnow()}, {'_id': 'ge:boo', 'added': datetime.utcnow()}])
     assert len(get_articles(collection, False)) == 2
     assert len(get_articles(collection, True)) == 1
     assert len(get_articles(collection)) == 3
+
+def test_get_articles_default_start():
+    collection = MongoClient().db.collection
+    collection.insert_many([{ '_id': 'tw:abc', 'label': 'shite', 'added': datetime.utcnow()}, {'_id': 'ge:boo', 'added': datetime(1971, 1, 1)}])
+    assert len(get_articles(collection)) == 2
+
+def test_get_articles_later_start():
+    collection = MongoClient().db.collection
+    collection.insert_many([{ '_id': 'tw:abc', 'label': 'shite', 'added': datetime.utcnow()}, {'_id': 'ge:boo', 'added': datetime(1971, 1, 1)}])
+    assert len(get_articles(collection, date_start= datetime.utcnow())) == 0
