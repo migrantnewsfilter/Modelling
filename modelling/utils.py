@@ -1,3 +1,4 @@
+from __future__ import print_function
 from bs4 import BeautifulSoup
 from re import sub, split, findall
 from datetime import datetime
@@ -33,11 +34,7 @@ def round_numbers(m):
     return str(i)
 
 def tokenize_numbers(s):
-    try:
-        return sub('(\d+)', round_numbers, s)
-    except:
-        print(s)
-        return s
+    return sub('(\d+)', round_numbers, s)
 
 def format_numbers(s):
     decomma = lambda m: m.group(1) + m.group(2)
