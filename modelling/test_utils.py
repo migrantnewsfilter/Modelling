@@ -1,4 +1,4 @@
-from utils import clean_html, get_articles
+from modelling.utils import *
 from mongomock import MongoClient
 from datetime import datetime
 #########################################################
@@ -23,6 +23,22 @@ def test_handle_removal():
     assert 'RT' in cleaned
     assert 'Somali refugee' in cleaned
 
+def test_preprocessor_lowercases_and_accents():
+    s = "Foó"
+    assert preprocessor(s) == "foo"
+
+def test_preprocessor_removes_commas():
+    s = "foo 30,000 baz"
+    assert preprocessor(s) == "foo 10000 baz"
+
+def test_split_numbers():
+    s = "5yo"
+    assert "5yo" not in split_numbers(s)
+
+def test_tokenize_numbers():
+    assert tokenize_numbers("foo 5 bar") == "foo 1 bar"
+    assert tokenize_numbers("foo 50 bar") == "foo 10 bar"
+    assert tokenize_numbers("foo 500 bar") == "foo 100 bar"
 
 
 #########################################################

@@ -4,7 +4,7 @@ from sklearn.cluster import DBSCAN
 from sklearn.model_selection import cross_val_score, cross_val_predict, GridSearchCV, LeaveOneGroupOut
 from sklearn.naive_bayes import MultinomialNB, BernoulliNB
 from sklearn.pipeline import Pipeline
-from utils import clean_html
+from modelling.utils import clean_html, preprocessor
 
 def create_df(li):
     original = pd.DataFrame(li)
@@ -17,8 +17,8 @@ def vectorizer(df):
     """ Creates a tfidf vectorizer on df.body values """
     return TfidfVectorizer(
         stop_words = 'english',
-        ngram_range = (2,4),
-        preprocessor = clean_html
+        ngram_range = (1,3),
+        preprocessor = preprocessor
     ).fit(df.body.values.astype('U'))
 
 def create_tfidf(v, df):
@@ -67,8 +67,8 @@ def create_model(data, target, priors = [0.3, 0.7]):
     """
     pipeline = Pipeline([
         ('tfidf',  TfidfVectorizer(stop_words = 'english',
-                                   ngram_range = (2,4),
-                                   preprocessor = clean_html)),
+                                   ngram_range = (1,3),
+                                   preprocessor = preprocessor)),
         ('classifier', MultinomialNB(class_prior=priors))
     ])
 
