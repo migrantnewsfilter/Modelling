@@ -13,13 +13,17 @@ def create_df(li):
      .drop('content', 1)
     )
 
-def vectorizer(df):
+def vectorizer(df, model = TfidfVectorizer):
     """ Creates a tfidf vectorizer on df.body values """
     return TfidfVectorizer(
         stop_words = 'english',
         ngram_range = (1,3),
         preprocessor = preprocessor
     ).fit(df.body.values.astype('U'))
+
+def create_word_count(df):
+    v = vectorizer(df, CountVectorizer)
+    return v.transform(df.body.values.astype('U'))
 
 def create_tfidf(v, df):
     return v.transform(df.body.values.astype('U'))
@@ -29,10 +33,10 @@ def fit_naive_bayes(tfidf, target, priors):
     logo = LeaveOneGroupOut()
     return cross_val_score(MultinomialNB(class_prior=priors), tfidf, target, cv = 50)
 
-def add_predictions(model, df):
+def add_predictions(model, df, cv):
     """ Creates a dataframe with predictions from model as 'predicts' """
     c = create_tfidf(vectorizer(df), df)
-    predictions = cross_val_predict(model, c, df.label, cv=100)
+    predictions = cross_val_predict(model, c, df.label, cv=cv)
     predicts = pd.DataFrame(predictions, columns = ['predicts'])
     combined = pd.concat([df, predicts], 1)
     problems = combined.loc[combined['label'] != combined['predicts']][['body', 'label', 'predicts']]
