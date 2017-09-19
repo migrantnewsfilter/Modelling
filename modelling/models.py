@@ -15,7 +15,7 @@ def create_df(li):
 
 def vectorizer(df, model = TfidfVectorizer):
     """ Creates a tfidf vectorizer on df.body values """
-    return TfidfVectorizer(
+    return model(
         stop_words = 'english',
         ngram_range = (1,3),
         preprocessor = preprocessor
