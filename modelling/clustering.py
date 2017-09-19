@@ -2,7 +2,7 @@ from functools import partial
 from pymongo import MongoClient
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.cluster import DBSCAN
-from models import clean_html
+from modelling.models import clean_html
 import pandas as pd
 import numpy as np
 
@@ -16,6 +16,15 @@ def dbscan(data, epsilon, n = 2):
     db = DBSCAN(eps=epsilon, min_samples=n, algorithm='brute', metric='cosine')
     fit = db.fit_predict(vector)
     return fit
+
+
+def get_unique_items(df, epsilon, body = 'body'):
+    clusters = dbscan(df[body], epsilon)
+    df = df.assign(cluster =  clusters)
+    df_clusters = (df[df.cluster != -1].groupby('cluster')
+                   .first())
+    return pd.concat([df_clusters, df[df.cluster == -1]])
+
 
 def get_cluster_table(epsilon):
     """ Used for optimizing and testing interactively """
