@@ -5,6 +5,13 @@ from datetime import datetime
 import math
 from sklearn.feature_extraction.text import strip_accents_unicode
 
+import logging
+logger = logging.getLogger()
+ch = logging.StreamHandler()
+ch.setLevel(logging.INFO)
+logger.addHandler(ch)
+
+
 def get_articles(collection, label = None, src = '', date_start = datetime(1970, 1, 1)):
     pattern = { '_id': {'$regex': src }, 'added': {'$gte': date_start}}
     if label != None:
@@ -20,7 +27,7 @@ def clean_html(s):
     except UserWarning:
         return ''
     except Exception as e:
-        print(e)
+        logger.debug(e)
         return ''
 
 def split_numbers(s):

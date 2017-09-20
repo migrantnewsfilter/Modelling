@@ -20,7 +20,7 @@ def dbscan(data, epsilon, n = 2):
 
 def get_unique_items(df, epsilon, body = 'body'):
     clusters = dbscan(df[body], epsilon)
-    df = df.assign(cluster =  clusters)
+    df = df.assign(cluster = clusters)
     df_clusters = (df[df.cluster != -1].groupby('cluster')
                    .first())
     return pd.concat([df_clusters, df[df.cluster == -1]])
