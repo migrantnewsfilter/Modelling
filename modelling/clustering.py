@@ -7,7 +7,7 @@ from modelling.utils import get_articles
 import pandas as pd
 import numpy as np
 
-def dbscan(data, epsilon, n = 2, leaf_size = 30):
+def dbscan(data, epsilon, n = 2, leaf_size = 30, algorithm = 'auto'):
     vector = CountVectorizer(
         stop_words='english',
         ngram_range=(1,2),
