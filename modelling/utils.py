@@ -25,7 +25,7 @@ def clean_html(s):
     """ Converts all HTML elements to Unicode """
     try:
         s = sub(r'https?://[^\s]+', '', s)
-        s = sub(r'@\w+', '', s)
+        s = sub(r'@\w+', '', s) #remove @'s from tweets
         return BeautifulSoup(s, 'html5lib').get_text() if s else ''
     except UserWarning:
         return ''
