@@ -2,25 +2,23 @@ from functools import partial
 from pymongo import MongoClient
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.cluster import DBSCAN
-from modelling.models import clean_html
-from modelling.utils import get_articles
+from modelling.utils import get_articles, clean_html
 import pandas as pd
 import numpy as np
 from datetime import datetime
 
-def dbscan(data, db):
-    vector = CountVectorizer(
+def vectorize(data):
+    return  CountVectorizer(
         stop_words='english',
         ngram_range=(1,2),
         preprocessor = clean_html
     ).fit_transform(data)
 
-    return db.fit_predict(vector)
+def dbscan(data, db):
+    return db.fit_predict(vectorize(data))
 
 def get_unique_items(df, epsilon, body = 'body'):
-    db = DBSCAN(eps = epsilon, min_samples = 2,
-                algorithm = 'brute', metric = 'cosine')
-
+    db = DBSCAN(eps = epsilon, min_samples = 2)
     clusters = dbscan(df[body], db)
     df = df.assign(cluster = clusters)
     df_clusters = (df[df.cluster != -1].groupby('cluster')
