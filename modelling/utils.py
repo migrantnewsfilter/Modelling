@@ -2,24 +2,29 @@ from __future__ import print_function
 from bs4 import BeautifulSoup
 from re import sub, split, findall
 from datetime import datetime, timedelta
-import math
+import math, hashlib
 from sklearn.feature_extraction.text import strip_accents_unicode
-
 import logging
 logger = logging.getLogger()
 ch = logging.StreamHandler()
 ch.setLevel(logging.INFO)
 logger.addHandler(ch)
 
+def get_bodies(article, body = 'body'):
+    try:
+        body =  article['content'][body]
+    except KeyError as e:
+        # logging.error('Malformed article in DB!: ', e)
+        return None
+    return body
 
 def get_articles(collection, label = None, src = '',
                  date_start = datetime(1970, 1, 1),
                  date_end = datetime.utcnow() + timedelta(hours = 1)):
-
     pattern = { '_id': {'$regex': src }, 'added': {'$gte': date_start, '$lt': date_end}}
     if label != None:
         pattern['label'] = {'$exists': label}
-    return list(collection.find(pattern))
+    return collection.find(pattern)
 
 def clean_html(s):
     """ Converts all HTML elements to Unicode """
@@ -57,3 +62,8 @@ def preprocessor(s):
     s = split_numbers(s)
     s = tokenize_numbers(s)
     return strip_accents_unicode(s.lower())
+
+def md5(s):
+    h = hashlib.new('md5')
+    h.update(s.encode('utf-8'))
+    return h.hexdigest()

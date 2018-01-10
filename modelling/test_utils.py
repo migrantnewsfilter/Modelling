@@ -48,9 +48,9 @@ def test_tokenize_numbers():
 def test_get_articles_with_regex():
     collection = MongoClient().db.collection
     collection.insert_many([{ '_id': 'tw:abc', 'added': datetime.utcnow(), 'foo': 'bar'}, {'_id': 'ge:dbc', 'added': datetime.utcnow(), 'foo': 'bar'}])
-    assert len(get_articles(collection, src = 'tw')) == 1
-    assert len(get_articles(collection, src = 'ge')) == 1
-    assert len(get_articles(collection)) == 2
+    assert len(list(get_articles(collection, src = 'tw'))) == 1
+    assert len(list(get_articles(collection, src = 'ge')))== 1
+    assert len(list(get_articles(collection))) == 2
 
 
 def test_get_articles_with_label():
@@ -58,21 +58,21 @@ def test_get_articles_with_label():
     collection.insert_many([{ '_id': 'tw:abc', 'label': 'shite', 'added': datetime.utcnow()},
                             {'_id': 'ge:dbc', 'added': datetime.utcnow()},
                             {'_id': 'ge:boo', 'added': datetime.utcnow()}])
-    assert len(get_articles(collection, False)) == 2
-    assert len(get_articles(collection, True)) == 1
-    assert len(get_articles(collection)) == 3
+    assert len(list(get_articles(collection, False))) == 2
+    assert len(list(get_articles(collection, True))) == 1
+    assert len(list(get_articles(collection))) == 3
 
 def test_get_articles_default_start():
     collection = MongoClient().db.collection
     collection.insert_many([{ '_id': 'tw:abc', 'label': 'shite', 'added': datetime.utcnow()},
                             {'_id': 'ge:boo', 'added': datetime(1971, 1, 1)}])
-    assert len(get_articles(collection)) == 2
+    assert len(list(get_articles(collection))) == 2
 
 def test_get_articles_later_start():
     collection = MongoClient().db.collection
     collection.insert_many([{ '_id': 'tw:abc', 'label': 'shite', 'added': datetime.utcnow()},
                             {'_id': 'ge:boo', 'added': datetime(1971, 1, 1)}])
-    assert len(get_articles(collection, date_start= datetime.utcnow())) == 0
+    assert len(list(get_articles(collection, date_start= datetime.utcnow()))) == 0
 
 def test_get_articles_up_to_is_strictly_greater():
     date_from = datetime.now() - timedelta(weeks = 1)
@@ -82,6 +82,13 @@ def test_get_articles_up_to_is_strictly_greater():
     collection.insert_many([{ '_id': 'tw:abc', 'label': 'shite', 'added': datetime.utcnow()},
                             {'_id': 'ge:boo', 'added': old_item}])
 
-    assert len(get_articles(collection, date_start = old_item)) == 2
-    assert len(get_articles(collection, date_end = old_item)) == 0
-    assert len(get_articles(collection, date_start = old_item, date_end = date_from)) == 1
+    assert len(list(get_articles(collection, date_start = old_item))) == 2
+    assert len(list(get_articles(collection, date_end = old_item))) == 0
+    assert len(list(get_articles(collection, date_start = old_item, date_end = date_from))) == 1
+
+#########################################################
+# md5
+#########################################################
+
+def test_md5():
+    assert type(md5('foo bar baz')) == str
