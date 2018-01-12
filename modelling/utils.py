@@ -20,10 +20,19 @@ def get_bodies(article, body = 'body'):
 
 def get_articles(collection, label = None, src = '',
                  date_start = datetime(1970, 1, 1),
-                 date_end = datetime.utcnow() + timedelta(hours = 1)):
+                 date_end = datetime.utcnow() + timedelta(hours = 1),
+                 unique = False):
     pattern = { '_id': {'$regex': src }, 'added': {'$gte': date_start, '$lt': date_end}}
     if label != None:
         pattern['label'] = {'$exists': label}
+    if unique != False:
+        agg = collection.aggregate([
+            { '$match': pattern},
+            { '$sort': { 'added': 1 } },
+            { '$group': { '_id': '$cluster', 'item': { '$first': '$$ROOT' }}}
+        ])
+        return map(lambda x: x['item'], agg)
+
     return collection.find(pattern)
 
 def clean_html(s):

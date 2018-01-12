@@ -1,6 +1,17 @@
 from modelling.utils import *
 from mongomock import MongoClient
+from pymongo import MongoClient as MC
 from datetime import datetime, timedelta
+import pytest
+
+@pytest.fixture(scope="module")
+def collection():
+    client = MC()
+    collection = client['newsfilter-test'].news
+    yield collection
+    collection.drop()
+    client.close()
+
 #########################################################
 # clean_html
 #########################################################
@@ -86,9 +97,51 @@ def test_get_articles_up_to_is_strictly_greater():
     assert len(list(get_articles(collection, date_end = old_item))) == 0
     assert len(list(get_articles(collection, date_start = old_item, date_end = date_from))) == 1
 
+
+def test_get_articles_unique_gets_timestamp_first(collection):
+    date_from = datetime.now() - timedelta(weeks = 7)
+    old = datetime.now() - timedelta(weeks = 2)
+    older = datetime.now() - timedelta(weeks = 4)
+    oldest = datetime.now() - timedelta(weeks = 6)
+
+    collection.insert_many([{ '_id': 'tw:a', 'cluster': 'foo', 'added': datetime.utcnow()},
+                            {'_id': 'tw:b', 'cluster': 'bar', 'added': old},
+                            {'_id': 'tw:c', 'cluster': 'foo', 'added': older},
+                            {'_id': 'tw:d', 'added': oldest}])
+
+    res = list(get_articles(collection, date_start = date_from, unique=True))
+    collection.drop()
+
+    assert [d['cluster'] for d in res if d.get('cluster')] == ['bar', 'foo']
+    foos = [d for d in res if d.get('cluster') == 'foo']
+    assert len(foos) == 1
+    assert foos[0]['_id'] == 'tw:c'
+
+
+def test_get_articles_works_with_unique_and_label(collection):
+    date_from = datetime.now() - timedelta(weeks = 7)
+    old = datetime.now() - timedelta(weeks = 2)
+    older = datetime.now() - timedelta(weeks = 4)
+    oldest = datetime.now() - timedelta(weeks = 6)
+
+    collection.insert_many([
+        { '_id': 'tw:a', 'cluster': 'foo', 'label': 'accepted', 'added': datetime.utcnow()},
+        {'_id': 'tw:b', 'cluster': 'foo', 'label': 'accepted', 'added': old},
+        {'_id': 'tw:c', 'cluster': 'bar', 'added': older},
+        {'_id': 'tw:d', 'added': oldest}
+    ])
+
+    res = list(get_articles(collection, label=True, date_start = date_from, unique=True))
+    collection.drop()
+    assert [d['cluster'] for d in res if d.get('cluster')] == ['foo']
+
+
+
+
 #########################################################
 # md5
 #########################################################
+
 
 def test_md5():
     assert type(md5('foo bar baz')) == str
