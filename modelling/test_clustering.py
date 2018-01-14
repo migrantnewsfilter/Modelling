@@ -1,6 +1,7 @@
 import json
 from modelling.clustering import *
 import pandas as pd
+import numpy as np
 from datetime import datetime, timedelta
 from modelling.utils import md5
 
@@ -13,6 +14,10 @@ with open('resources/tweets_a.json') as f:
 #     assert len(uniques) == 7
 #     assert len(uniques) < len(tweets_a)
 
+def test_cluster_articles_works_with_empty_data():
+    assert cluster_articles([], 0.5) == []
+    assert cluster_articles(np.array([]), 0.5) == []
+    assert cluster_articles(pd.Series([]), 0.5) == []
 
 def test_hash_cluster_adds_hash_of_earliest_in_cluster():
     raw = [('a', datetime(2017, 10, 1), 'foo'),

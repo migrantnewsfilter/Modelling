@@ -45,12 +45,13 @@ def hash_cluster(data, clusters, body = 'body'):
 
 def cluster_articles(data, eps, body = 'body'):
     """ takes generator of data and returns clusters as numpy array"""
+    if len(data) == 0:
+        return []
     data = list(data)
     bodies = map(lambda b: get_bodies(b, body), data)
     db = DBSCAN(eps, min_samples = 2)
     cluster_nums = db.fit_predict(vectorizer(bodies))
     return hash_cluster(data, cluster_nums).hash_cluster.as_matrix()
-
 
 
 def get_cluster_table(eps, body = 'body', src = 'tw', date = datetime(2017,9,26), db = None):
