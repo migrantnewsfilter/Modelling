@@ -22,7 +22,7 @@ def dbscan(data, db):
 def add_cluster(n, d, body):
     return {
         '_id': d['_id'],
-        'published': d['published'],
+        'published': d.get('published', d.get('added')),
         'cluster': n,
         'body': d['content'][body]
     }
@@ -45,10 +45,11 @@ def hash_cluster(data, clusters, body = 'body'):
 
 def cluster_articles(data, eps, body = 'body'):
     """ takes generator of data and returns clusters as numpy array"""
-    if len(data) == 0:
-        return []
-    data = list(data)
+
     bodies = map(lambda b: get_bodies(b, body), data)
+    bodies = [b for b in bodies if b]
+    if len(bodies) == 0:
+        return []
     db = DBSCAN(eps, min_samples = 2)
     cluster_nums = db.fit_predict(vectorizer(bodies))
     return hash_cluster(data, cluster_nums).hash_cluster.as_matrix()

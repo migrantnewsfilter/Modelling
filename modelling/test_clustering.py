@@ -14,6 +14,9 @@ with open('resources/tweets_a.json') as f:
 #     assert len(uniques) == 7
 #     assert len(uniques) < len(tweets_a)
 
+def get_cluster_articles_with_malformed_data():
+    assert cluster_articles([{'foo': 'bar'}], 0.5) == []
+
 def test_cluster_articles_works_with_empty_data():
     assert cluster_articles([], 0.5) == []
     assert cluster_articles(np.array([]), 0.5) == []
