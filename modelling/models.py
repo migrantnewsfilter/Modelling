@@ -90,7 +90,8 @@ def get_prediction_data(coll, label, start = datetime(1970,1,1)):
               ('tw', 'body'),
               ('fa', 'body')]
 
-    get = lambda s: get_articles(coll, label=label, src=s, date_start=start, unique=True)
+    # get unique for labelled! Not unique for unlabelled.
+    get = lambda s: get_articles(coll, label=label, src=s, date_start=start, unique=label)
     sources = ((get(src),key) for src,key in lookup)
     minimized = (
         {'text': a['content'][key],
@@ -98,6 +99,8 @@ def get_prediction_data(coll, label, start = datetime(1970,1,1)):
          '_id': a['_id']}
         for articles,key in sources for a in articles)
     df = pd.DataFrame(list(minimized))
+    if len(df) == 0:
+        return [], [], []
     return df.text, df.label, df._id
 
 
