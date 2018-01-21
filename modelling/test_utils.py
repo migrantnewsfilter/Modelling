@@ -36,11 +36,11 @@ def test_handle_removal():
 
 def test_preprocessor_lowercases_and_accents():
     s = "Foó"
-    assert preprocessor(s) == "foo"
+    assert preprocessor(s) == "<SHORT> foo"
 
 def test_preprocessor_removes_commas():
     s = "foo 30,000 baz"
-    assert preprocessor(s) == "foo 10000 baz"
+    assert preprocessor(s) == "<SHORT> foo 10000 baz"
 
 def test_split_numbers():
     s = "5yo"
@@ -50,6 +50,11 @@ def test_tokenize_numbers():
     assert tokenize_numbers("foo 5 bar") == "foo 1 bar"
     assert tokenize_numbers("foo 50 bar") == "foo 10 bar"
     assert tokenize_numbers("foo 500 bar") == "foo 100 bar"
+
+def test_tokenize_short():
+    assert tokenize_short("foo bar baz") == "<SHORT> foo bar baz"
+    assert tokenize_short("foo bar baz"*10) == "foo bar baz"*10
+    assert preprocessor("foo bar baz") == "<SHORT> foo bar baz"
 
 
 #########################################################

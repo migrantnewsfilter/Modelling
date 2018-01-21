@@ -60,6 +60,12 @@ def round_numbers(m):
 def tokenize_numbers(s):
     return sub('(\d+)', round_numbers, s)
 
+def tokenize_short(s, lim = 25):
+    if (len(s) < lim):
+        return '<SHORT> ' + s
+    else:
+        return s
+
 def format_numbers(s):
     decomma = lambda m: m.group(1) + m.group(2)
     s = sub('(\d+),(\d+)', decomma, s)
@@ -70,7 +76,9 @@ def preprocessor(s):
     s = format_numbers(s)
     s = split_numbers(s)
     s = tokenize_numbers(s)
-    return strip_accents_unicode(s.lower())
+    s = strip_accents_unicode(s.lower())
+    s = tokenize_short(s)
+    return s
 
 def md5(s):
     h = hashlib.new('md5')
