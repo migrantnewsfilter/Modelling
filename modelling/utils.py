@@ -26,6 +26,7 @@ def get_articles(collection, label = None, src = '',
     if label != None:
         pattern['label'] = {'$exists': label}
     if unique != False:
+        pattern['cluster'] = {'$exists': True}
         agg = collection.aggregate([
             { '$match': pattern},
             { '$sort': { 'added': 1 } },

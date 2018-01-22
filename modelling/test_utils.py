@@ -131,6 +131,7 @@ def test_get_articles_works_with_unique_and_label(collection):
 
     collection.insert_many([
         { '_id': 'tw:a', 'cluster': 'foo', 'label': 'accepted', 'added': datetime.utcnow()},
+        { '_id': 'tw:e', 'label': 'accepted', 'added': datetime.utcnow()},
         {'_id': 'tw:b', 'cluster': 'foo', 'label': 'accepted', 'added': old},
         {'_id': 'tw:c', 'cluster': 'bar', 'added': older},
         {'_id': 'tw:d', 'added': oldest}
@@ -140,6 +141,8 @@ def test_get_articles_works_with_unique_and_label(collection):
     collection.drop()
     assert [d['cluster'] for d in res if d.get('cluster')] == ['foo']
 
+    # Should ignore non clustered articles...
+    assert len(res) == 1
 
 
 
