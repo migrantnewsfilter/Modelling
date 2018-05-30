@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 from .models import *
 
+
 @pytest.fixture(scope="module")
 def collection():
     client = MC()
@@ -14,7 +15,7 @@ def collection():
     collection.drop()
     client.close()
 
-
+@pytest.mark.db
 def test_get_prediction_data(collection):
     collection.insert_many([
         {'_id': 'tw:abc', 'title': None, 'content': {'body': 'foo goes to a bar'}, 'label': 'accepted', 'added': datetime.utcnow()},

@@ -1,5 +1,6 @@
 from __future__ import print_function
 from bs4 import BeautifulSoup
+import re
 from re import sub, split, findall
 from datetime import datetime, timedelta
 import math, hashlib
@@ -34,13 +35,12 @@ def get_articles(collection, label = None, src = '',
         ])
         return map(lambda x: x['item'], agg)
 
-    return collection.find(pattern)
+    return collection.find(pattern).sort('added',1)
 
 def clean_html(s):
     """ Converts all HTML elements to Unicode """
     try:
         s = sub(r'https?://[^\s]+', '', s)
-        s = sub(r'@\w+', '', s) #remove @'s from tweets
         return BeautifulSoup(s, 'html5lib').get_text() if s else ''
     except UserWarning:
         return ''
@@ -48,22 +48,35 @@ def clean_html(s):
         logger.debug(e)
         return ''
 
+def clean_twitter(s):
+    """ Cleans Twitter specific issues
+
+    Can you think of what else you might need to add here?
+    """
+    s = sub(r'@\w+', '', s) #remove @ mentions from tweets
+    s = re.sub(r'^rt', '', s, flags = re.I)
+    return s
+
 def split_numbers(s):
     return ' '.join(split('(\d+)[^\d\s]+', s))
 
-def round_numbers(m):
+def round_numbers(m, lim = 300):
     n = int(m.group(1))
     if n < 1:
         return ''
-    i = 10**math.floor(math.log10(n))
-    return str(i)
+    if n < lim:
+        return 'SMALLNUMBER'
+    else:
+        return 'LARGENUMBER'
 
 def tokenize_numbers(s):
     return sub('(\d+)', round_numbers, s)
 
-def tokenize_short(s, lim = 25):
-    if (len(s) < lim):
-        return '<SHORT> ' + s
+def tokenize_short(s, lim = 5):
+    token_pattern = re.compile(r"(?u)\b\w\w+\b")
+    tokens = token_pattern.findall(s)
+    if (len(tokens) < lim):
+        return 'SHORTARTICLE ' + s
     else:
         return s
 
@@ -74,6 +87,7 @@ def format_numbers(s):
 
 def preprocessor(s):
     s = clean_html(s)
+    s = clean_twitter(s)
     s = format_numbers(s)
     s = split_numbers(s)
     s = tokenize_numbers(s)

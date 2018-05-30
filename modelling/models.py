@@ -9,51 +9,21 @@ from sklearn.pipeline import Pipeline
 from modelling.utils import clean_html, preprocessor, get_articles
 from datetime import datetime, timedelta
 
-def create_df(li):
-    li = list(li)
-    original = pd.DataFrame(li)
-    return (pd
-     .concat([original, pd.DataFrame(original['content'].tolist())], 1)
-     .drop('content', 1)
-    )
 
-def vectorizer(dat, model = TfidfVectorizer):
-    """ Creates a tfidf vectorizer on df.body values """
+def vectorizer(dat, model = TfidfVectorizer, preprocessor=preprocessor):
+    """ Creates a tfidf vectorizer from an array-like of strings """
     return model(
         stop_words = 'english',
         ngram_range = (1,3),
         preprocessor = preprocessor
     ).fit(dat)
 
-def create_word_count(df):
-    X = df.body.values.astype('U')
-    v = vectorizer(X, CountVectorizer)
-    return v.transform(X)
+def get_errors(X_test, y_test, preds):
+    df = pd.DataFrame({'text': X_test, 'prediction': preds, 'label': y_test})
+    problems = df[df.label != df.prediction]
+    return (problems[problems.label == False]
+            , problems[problems.label == True])
 
-def create_tfidf(df):
-    X = df.body.values.astype('U')
-    v = vectorizer(X)
-    return v.transform(X)
-
-def fit_naive_bayes(tfidf, target, priors):
-    """ Shows cross validated score from a NB model with given priors """
-    logo = LeaveOneGroupOut()
-    return cross_val_score(MultinomialNB(class_prior=priors), tfidf, target, cv = 50)
-
-def add_predictions(model, df, cv):
-    """ Creates a dataframe with predictions from model as 'predicts' """
-    c = create_tfidf(vectorizer(df), df)
-    predictions = cross_val_predict(model, c, df.label, cv=cv)
-    predicts = pd.DataFrame(predictions, columns = ['predicts'])
-    combined = pd.concat([df, predicts], 1)
-    problems = combined.loc[combined['label'] != combined['predicts']][['body', 'label', 'predicts']]
-    return problems
-
-def create_test_model(v, df, priors = [0.3,0.7]):
-    """ Creates a NB Model & fits it via body and label """
-    model = MultinomialNB(class_prior = priors)
-    model.fit(v.transform(map(clean_html, df.body.values.astype('U'))), df.label)
-    return model
 
 def get_top_features(v, model, accepted = True, start = 1, end = 10):
     """ Get the most probable n-grams for a given class.
@@ -62,7 +32,7 @@ def get_top_features(v, model, accepted = True, start = 1, end = 10):
     >>> model = create_test_model(v, df)
     >>> get_top_features(v, model)
     """
-    i = 0 if accepted else 1
+    i = 1 if accepted else 0
     probs = zip(v.get_feature_names(), model.feature_log_prob_[i])
     return sorted(probs, key = lambda x: -x[1])[start:end]
 
@@ -85,10 +55,24 @@ class Model(object):
         return np.array(preds).mean(axis=0)
 
 
-def get_prediction_data(coll, label, start = datetime(1970,1,1)):
-    lookup = [('ge', 'title'),
-              ('tw', 'body'),
-              ('fa', 'body')]
+class OneSidedNB(MultinomialNB):
+    """ Uses only the words predictive of the positive class"""
+    def __init__(self, alpha=1.0, fit_prior=True, class_prior=None):
+        self.alpha = alpha
+        self.fit_prior = fit_prior
+        self.class_prior = class_prior
+
+    def _joint_log_likelihood(self, X):
+        probs = self.feature_log_prob_
+        ignore = probs[1,:] < probs[0,:]
+        self.feature_log_prob_[:, ignore] = 0
+        return super(OneSidedNB, self)._joint_log_likelihood(X)
+
+def get_prediction_data(coll, label, start = datetime(1970,1,1), lookup = None):
+    if not lookup:
+        lookup = [('ge', 'title'),
+                  ('tw', 'body'),
+                  ('fa', 'body')]
 
     # get unique for labelled! Not unique for unlabelled.
     get = lambda s: get_articles(coll, label=label, src=s, date_start=start, unique=label)
@@ -103,13 +87,7 @@ def get_prediction_data(coll, label, start = datetime(1970,1,1)):
         return [], [], []
     return df.text, df.label, df._id
 
-
-def train_and_predict(X_train, Y_train, X_test):
-    idx = X_train.shape[0]
-    X = pd.concat([X_train, X_test])
-    vector = vectorizer(X).transform(X)
-    V_train, V_test = vector[0:idx], vector[idx:]
-
+def base_model():
     models = [(LinearSVC(tol = 10e-6, max_iter = 8000),
                'decision_function',
                lambda n: (n*2.5 + 4)/10),
@@ -117,6 +95,13 @@ def train_and_predict(X_train, Y_train, X_test):
                'predict_proba',
                lambda n: n[:,1])]
 
-    model = Model(models)
+    return Model(models)
+
+def train_and_predict(model, X_train, Y_train, X_test):
+    idx = X_train.shape[0]
+    X = pd.concat([X_train, X_test])
+    vector = vectorizer(X).transform(X)
+    V_train, V_test = vector[0:idx], vector[idx:]
+
     model.fit(V_train, Y_train)
     return model.predict_proba(V_test)

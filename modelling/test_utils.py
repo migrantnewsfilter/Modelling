@@ -36,31 +36,32 @@ def test_handle_removal():
 
 def test_preprocessor_lowercases_and_accents():
     s = "Foó"
-    assert preprocessor(s) == "<SHORT> foo"
+    assert preprocessor(s) == "SHORTARTICLE foo"
 
 def test_preprocessor_removes_commas():
     s = "foo 30,000 baz"
-    assert preprocessor(s) == "<SHORT> foo 10000 baz"
+    assert preprocessor(s) == "SHORTARTICLE foo largenumber baz"
 
 def test_split_numbers():
     s = "5yo"
     assert "5yo" not in split_numbers(s)
 
 def test_tokenize_numbers():
-    assert tokenize_numbers("foo 5 bar") == "foo 1 bar"
-    assert tokenize_numbers("foo 50 bar") == "foo 10 bar"
-    assert tokenize_numbers("foo 500 bar") == "foo 100 bar"
+    assert tokenize_numbers("foo 5 bar") == "foo SMALLNUMBER bar"
+    assert tokenize_numbers("foo 50 bar") == "foo SMALLNUMBER bar"
+    assert tokenize_numbers("foo 500 bar") == "foo LARGENUMBER bar"
 
 def test_tokenize_short():
-    assert tokenize_short("foo bar baz") == "<SHORT> foo bar baz"
+    assert tokenize_short("foo bar baz") == "SHORTARTICLE foo bar baz"
     assert tokenize_short("foo bar baz"*10) == "foo bar baz"*10
-    assert preprocessor("foo bar baz") == "<SHORT> foo bar baz"
+    assert preprocessor("foo bar baz") == "SHORTARTICLE foo bar baz"
 
 
 #########################################################
 # get_articles
 #########################################################
 
+@pytest.mark.db
 def test_get_articles_with_regex():
     collection = MongoClient().db.collection
     collection.insert_many([{ '_id': 'tw:abc', 'added': datetime.utcnow(), 'foo': 'bar'}, {'_id': 'ge:dbc', 'added': datetime.utcnow(), 'foo': 'bar'}])
@@ -68,7 +69,7 @@ def test_get_articles_with_regex():
     assert len(list(get_articles(collection, src = 'ge')))== 1
     assert len(list(get_articles(collection))) == 2
 
-
+@pytest.mark.db
 def test_get_articles_with_label():
     collection = MongoClient().db.collection
     collection.insert_many([{ '_id': 'tw:abc', 'label': 'shite', 'added': datetime.utcnow()},
@@ -78,18 +79,21 @@ def test_get_articles_with_label():
     assert len(list(get_articles(collection, True))) == 1
     assert len(list(get_articles(collection))) == 3
 
+@pytest.mark.db
 def test_get_articles_default_start():
     collection = MongoClient().db.collection
     collection.insert_many([{ '_id': 'tw:abc', 'label': 'shite', 'added': datetime.utcnow()},
                             {'_id': 'ge:boo', 'added': datetime(1971, 1, 1)}])
     assert len(list(get_articles(collection))) == 2
 
+@pytest.mark.db
 def test_get_articles_later_start():
     collection = MongoClient().db.collection
     collection.insert_many([{ '_id': 'tw:abc', 'label': 'shite', 'added': datetime.utcnow()},
                             {'_id': 'ge:boo', 'added': datetime(1971, 1, 1)}])
     assert len(list(get_articles(collection, date_start= datetime.utcnow()))) == 0
 
+@pytest.mark.db
 def test_get_articles_up_to_is_strictly_greater():
     date_from = datetime.now() - timedelta(weeks = 1)
     old_item = datetime.now() - timedelta(weeks = 2)
@@ -102,7 +106,7 @@ def test_get_articles_up_to_is_strictly_greater():
     assert len(list(get_articles(collection, date_end = old_item))) == 0
     assert len(list(get_articles(collection, date_start = old_item, date_end = date_from))) == 1
 
-
+@pytest.mark.db
 def test_get_articles_unique_gets_timestamp_first(collection):
     date_from = datetime.now() - timedelta(weeks = 7)
     old = datetime.now() - timedelta(weeks = 2)
@@ -122,7 +126,7 @@ def test_get_articles_unique_gets_timestamp_first(collection):
     assert len(foos) == 1
     assert foos[0]['_id'] == 'tw:c'
 
-
+@pytest.mark.db
 def test_get_articles_works_with_unique_and_label(collection):
     date_from = datetime.now() - timedelta(weeks = 7)
     old = datetime.now() - timedelta(weeks = 2)
